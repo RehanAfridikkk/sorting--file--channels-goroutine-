@@ -5,57 +5,52 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 )
 
 type CountsResult struct {
-	LineCount  int
-	WordsCount int
-	VowelsCount int
+	LineCount        int
+	WordsCount       int
+	VowelsCount      int
 	PunctuationCount int
 }
 
 func Counts(chunk []byte, results chan<- CountsResult) {
-	lineCount := 0
-	wordsCount := 0
-	vowelsCount := 0
-	punctuationCount := 0
+    lineCount := 0
+    wordsCount := 0
+    vowelsCount := 0
+    punctuationCount := 0
 
-	inWord := false
-	isLineStart := true
+    inWord := false
 
-	for _, b := range chunk {
-		switch {
-		case b == '\n'|| b ==13:
-			if isLineStart {
-				lineCount++
-			}
-			isLineStart = true
-		case b == ' ' || b == '\t':
-			if inWord {
-				wordsCount++
-				inWord = false
-			}
-			isLineStart = false
-		default:
-			isLineStart = false
-			inWord = true
+    for _, b := range chunk {
+        switch {
+        case b == '\n':
+            lineCount++
+        case b == ' ' || b == '\t':
+            if inWord {
+                wordsCount++
+                inWord = false
+            }
+        default:
+            inWord = true
 
-			if isVowel(b) {
-				vowelsCount++
-			}
+            if isVowel(b) {
+                vowelsCount++
+            }
 
-			if isPunctuation(b) {
-				punctuationCount++
-			}
-		}
-	}
+            if isPunctuation(b) {
+                punctuationCount++
+            }
+        }
+    }
 
-	if inWord {
-		wordsCount++
-	}
+    if inWord {
+        wordsCount++
+    }
 
-	results <- CountsResult{LineCount: lineCount, WordsCount: wordsCount, VowelsCount: vowelsCount, PunctuationCount: punctuationCount}
+    results <- CountsResult{LineCount: lineCount, WordsCount: wordsCount, VowelsCount: vowelsCount, PunctuationCount: punctuationCount}
 }
 
 
@@ -79,18 +74,20 @@ func byteInSlice(b byte, slice []byte) bool {
 }
 
 func main() {
-	start := time.Now()
-	results := make(chan CountsResult, 5)
+	if len(os.Args) != 3 {
+		fmt.Println("Usage: ", os.Args[0], " <file_path> <num_chunks>")
+		return
+	}
 
-	// Ask the user for the number of chunks
-	var numChunks int
-	fmt.Print("Enter the number of chunks: ")
-	_, err := fmt.Scanf("%d", &numChunks)
+	filePath := os.Args[1]                     // Get the file path from the command-line argument
+	numChunks, err := strconv.Atoi(os.Args[2]) // Get the number of chunks as an integer
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	filePath := "newFile.txt"
+	start := time.Now()
+	results := make(chan CountsResult, numChunks)
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -114,9 +111,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		go func(chunk []byte) {
-			Counts(chunk, results)
-		}(chunk)
+		go Counts(chunk, results)
 	}
 
 	totalCounts := CountsResult{}
